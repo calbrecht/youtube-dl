@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 
 import functools
-import re
 
 from .common import InfoExtractor
 from ..utils import (
@@ -31,12 +30,12 @@ class ZDFIE(InfoExtractor):
             extr_player = ZDFExtractorPlayer(self, url, video_id)
             formats = extr_player._real_extract()
         except (ExtractorError, KeyError) as e:
-            self._downloader.report_warning('%s: %s\nusing fallback method (mobile url)' % (type(e).__name__, compat_str(e)))
+            self._downloader.report_warning('{0}: {1}\nusing fallback method (mobile url)'.format(type(e).__name__, compat_str(e)))
             extr_mobile = ZDFExtractorMobile(self, url, video_id)
             formats = extr_mobile._real_extract()
         return formats
 
-class ZDFExtractor:
+class ZDFExtractor(object):
     """Super class for the 2 extraction methods"""
     def __init__(self, parent, url, video_id):
         self.parent = parent
@@ -80,7 +79,7 @@ class ZDFExtractor:
 class ZDFExtractorMobile(ZDFExtractor):
     """Simple URL extraction method. Disadvantage: fewer formats, no subtitles"""
     def __init__(self, parent, url, video_id):
-        ZDFExtractor.__init__(self, parent, url, video_id)
+        super(ZDFExtractorMobile, self).__init__(parent, url, video_id)
 
     def _fetch_entries(self):
         meta_data_url = 'https://zdf-cdn.live.cellular.de/mediathekV2/document/' + self.video_id
@@ -90,19 +89,23 @@ class ZDFExtractorMobile(ZDFExtractor):
     def _get_title(self):
         return self.meta_data['document']['titel']
 
-    def _get_video_url(self, entry):
+    @staticmethod
+    def _get_video_url(entry):
         return entry['url']
 
-    def _get_format_id(self, entry):
+    @staticmethod
+    def _get_format_id(entry):
         format_id = entry['type']
         if 'quality' in entry:
             format_id += '-' + entry['quality']
         return format_id
 
-    def _get_format_note(self, entry):
+    @staticmethod
+    def _get_format_note():
         return None
 
-    def _get_subtitles(self):
+    @staticmethod
+    def _get_subtitles():
         return None
 
     def _get_description(self):
@@ -124,7 +127,7 @@ class ZDFExtractorPlayer(ZDFExtractor):
 
     Follows the requests of the website."""
     def __init__(self, parent, url, video_id):
-        ZDFExtractor.__init__(self, parent, url, video_id)
+        super(ZDFExtractorPlayer, self).__init__(parent, url, video_id)
 
     def _fetch_entries(self):
         webpage = self.parent._download_webpage(self.url, self.video_id)
@@ -142,7 +145,7 @@ class ZDFExtractorPlayer(ZDFExtractor):
         else:
             player_id = None
 
-        self.content_json = self.parent._download_json(jsb_json['content'], self.video_id, headers={'Api-Auth': 'Bearer %s' % api_token}, note='Downloading content description')
+        self.content_json = self.parent._download_json(jsb_json['content'], self.video_id, headers={'Api-Auth': 'Bearer {0}'.format(api_token)}, note='Downloading content description')
 
         main_video_content = self.content_json['mainVideoContent']['http://zdf.de/rels/target']
         meta_data_url = None
@@ -198,7 +201,8 @@ class ZDFExtractorPlayer(ZDFExtractor):
         format_id += entry['quality']
         return format_id
 
-    def _get_facets(self, formitaet):
+    @staticmethod
+    def _get_facets(formitaet):
         facets = formitaet.get('facets') or []
         if formitaet.get('isAdaptive'):
             facets.append('adaptive')
@@ -273,8 +277,8 @@ class ZDFChannelIE(InfoExtractor):
     def _fetch_page(self, channel_id, page):
         offset = page * self._PAGE_SIZE
         xml_url = (
-            'http://www.zdf.de/ZDFmediathek/xmlservice/web/aktuellste?ak=web&offset=%d&maxLength=%d&id=%s'
-            % (offset, self._PAGE_SIZE, channel_id))
+            'http://www.zdf.de/ZDFmediathek/xmlservice/web/aktuellste?ak=web&offset={0}&maxLength={1}&id={2}'
+            .format(offset, self._PAGE_SIZE, channel_id))
         doc = self._download_xml(
             xml_url, channel_id,
             note='Downloading channel info',
@@ -291,7 +295,7 @@ class ZDFChannelIE(InfoExtractor):
                 '_type': 'url',
                 'playlist_title': title,
                 'playlist_description': description,
-                'url': 'zdf:%s:%s' % (a_type, a_id),
+                'url': 'zdf:{0}:{1}'.format(a_type, a_id),
             }
 
     def _real_extract(self, url):
